@@ -1867,6 +1867,119 @@ html, body, #root {
   margin-top: 6px;
 }
 
+/* Stammer.mp3 Audio Parsing Feature */
+.stammer-audio-card {
+  width: 100%;
+  margin-top: 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(99, 102, 241, 0.08));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stammer-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge-audio {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  margin-left: auto;
+}
+
+.stammer-card-desc {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.audio-filename {
+  background: rgba(0, 0, 0, 0.4);
+  color: #38bdf8;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.stammer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.btn-stammer-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-stammer-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.review-audio-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.audio-bar-info {
+  display: flex;
+  align-items: center;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.btn-outline-emerald {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-emerald:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
 /* Voice Calling & Session Topbar Styles */
 .session-topbar {
   display: flex;

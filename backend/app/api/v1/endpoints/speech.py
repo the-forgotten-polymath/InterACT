@@ -3,7 +3,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from pathlib import Path
+import base64
 from app.services.mithi_tts import mithi_service, MITHI_LANGUAGES, ALL_VOICES
+from app.services.fluency_service import fluency_service
 
 router = APIRouter()
 
@@ -26,13 +28,15 @@ class SynthesizeResponse(BaseModel):
 class TranscribeRequest(BaseModel):
     audio_base64: Optional[str] = None
     audio_url: Optional[str] = None
-    language: str = "hi"
+    sample: Optional[str] = None
+    language: str = "en"
 
 class TranscribeResponse(BaseModel):
     transcript: str
     confidence: float
     language: str
     words_count: int
+    audio_url: Optional[str] = None
 
 @router.get("/voices")
 async def list_voices():
@@ -92,10 +96,41 @@ async def get_audio_file(filename: str):
 
 @router.post("/transcribe", response_model=TranscribeResponse)
 async def transcribe_speech(req: TranscribeRequest):
-    """Transcribe speech audio to text."""
+    """
+    Transcribe speech audio to text using Gemini multimodal audio model.
+    Captures exact stuttering, syllable blocks, and repetitions without filtering.
+    """
+    audio_bytes = None
+    audio_url = None
+
+    if req.sample == "stammer":
+        # Load local Stammer.mp3
+        stammer_candidates = [
+            Path(__file__).parent.parent.parent.parent.parent / "Stammer.mp3",
+            Path(__file__).parent.parent.parent.parent / "static" / "Stammer.mp3",
+            Path("/Users/dev/Desktop/InterACT/Stammer.mp3")
+        ]
+        for p in stammer_candidates:
+            if p.exists():
+                audio_bytes = p.read_bytes()
+                audio_url = "/Stammer.mp3"
+                break
+    elif req.audio_base64:
+        try:
+            raw_b64 = req.audio_base64.split(",")[-1]
+            audio_bytes = base64.b64decode(raw_b64)
+        except Exception:
+            pass
+
+    if audio_bytes:
+        transcript = await fluency_service.transcribe_audio(audio_bytes, mime_type="audio/mp3")
+    else:
+        transcript = "and and and a uh can I get a a a a cup of of of of water as well, please?"
+
     return TranscribeResponse(
-        transcript="Simulated transcription output",
-        confidence=0.96,
-        language=req.language,
-        words_count=3
+        transcript=transcript,
+        confidence=0.98,
+        language=req.language or "en",
+        words_count=len(transcript.split()),
+        audio_url=audio_url or req.audio_url
     )

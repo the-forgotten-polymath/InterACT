@@ -103,6 +103,29 @@ export class InterACTApi {
     return res.json();
   }
 
+  static async transcribeSpeech(req: {
+    audio_base64?: string;
+    sample?: string;
+    language?: string;
+  }): Promise<{
+    transcript: string;
+    confidence: number;
+    language: string;
+    words_count: number;
+    audio_url?: string;
+  }> {
+    const res = await fetch(`${getApiBase()}/speech/transcribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Speech transcription failed (${res.status})`);
+    }
+    return res.json();
+  }
+
   static async reconstructSpeech(req: {
     raw_transcript: string;
     language?: string;

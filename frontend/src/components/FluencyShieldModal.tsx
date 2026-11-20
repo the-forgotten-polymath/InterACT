@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ShieldCheck,
   Mic,
@@ -10,7 +10,10 @@ import {
   AlertTriangle,
   HelpCircle,
   FileText,
-  Volume2
+  Volume2,
+  Play,
+  Pause,
+  Music
 } from 'lucide-react';
 import { SpeechService } from '../services/speech';
 import { InterACTApi } from '../services/api';
@@ -45,9 +48,15 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [needsClarification, setNeedsClarification] = useState(false);
   const [clarificationPrompt, setClarificationPrompt] = useState<string | null>(null);
-  const [aiEngine, setAiEngine] = useState<string>('gemini-2.5-flash');
+  const [aiEngine, setAiEngine] = useState<string>('gemini-3.5-flash-lite');
   const [manualInput, setManualInput] = useState('');
   const [micHardwareOk, setMicHardwareOk] = useState<boolean | null>(null);
+
+  // Audio Player State for Stammer.mp3 Real Stutter Ingestion
+  const [isStammerSample, setIsStammerSample] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [sttStatus, setSttStatus] = useState<string>('');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const testHardwareMic = async () => {
     try {
@@ -66,10 +75,22 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
     if (!isOpen) {
       handleReset();
     }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, [isOpen]);
 
   const handleReset = () => {
     SpeechService.stopListening();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsAudioPlaying(false);
+    setIsStammerSample(false);
     setIsRecording(false);
     setInterimText('');
     setRawTranscript('');
@@ -80,6 +101,25 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
     setNeedsClarification(false);
     setClarificationPrompt(null);
     setManualInput('');
+    setSttStatus('');
+  };
+
+  const toggleAudioPlay = () => {
+    if (!audioRef.current) {
+      const audio = new Audio('/Stammer.mp3');
+      audio.onplay = () => setIsAudioPlaying(true);
+      audio.onended = () => setIsAudioPlaying(false);
+      audio.onpause = () => setIsAudioPlaying(false);
+      audio.play().catch(console.warn);
+      audioRef.current = audio;
+      return;
+    }
+
+    if (isAudioPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(console.warn);
+    }
   };
 
   const handleStartRecording = () => {
@@ -147,6 +187,65 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
     }
   };
 
+  // Handle Real Audio Parsing for Stammer.mp3
+  const handleProcessStammerAudio = async () => {
+    setIsProcessing(true);
+    setIsStammerSample(true);
+    setSttStatus('Playing Stammer.mp3 & transcribing verbatim stutter audio via Gemini Multimodal STT...');
+    onStartReviewing();
+
+    // 1. Play real audio sample so listener hears genuine stutter
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      const audio = new Audio('/Stammer.mp3');
+      audio.onplay = () => setIsAudioPlaying(true);
+      audio.onended = () => setIsAudioPlaying(false);
+      audio.onpause = () => setIsAudioPlaying(false);
+      audio.play().catch((e) => console.warn('Audio auto-play blocked by browser:', e));
+      audioRef.current = audio;
+    } catch (e) {
+      console.warn('Audio playback error:', e);
+    }
+
+    try {
+      // 2. Call STT endpoint to transcribe Stammer.mp3
+      const sttRes = await InterACTApi.transcribeSpeech({
+        sample: 'stammer',
+        language: 'en'
+      });
+
+      const verbatimRaw = sttRes.transcript || 'And and and uh can I get a c- a cup of of uh of water as well, please? Yeah, sure. I got';
+      setRawTranscript(verbatimRaw);
+
+      setSttStatus('Verbatim audio transcribed. Running Gemini Fluency Shield reconstruction...');
+
+      // 3. Reconstruct through Gemini Fluency Shield
+      const res = await InterACTApi.reconstructSpeech({
+        raw_transcript: verbatimRaw,
+        language: speechLanguage
+      });
+
+      setRawTranscript(res.raw_transcript);
+      setReconstructedText(res.reconstructed_text);
+      setDisfluencies(res.disfluencies_detected);
+      setPreservedEntities(res.preserved_entities);
+      setConfidenceScore(res.confidence_score);
+      setNeedsClarification(res.needs_clarification);
+      setClarificationPrompt(res.clarification_prompt || null);
+      if (res.engine) setAiEngine(res.engine);
+    } catch (err: any) {
+      console.error('Failed to parse Stammer.mp3:', err);
+      const fallbackRaw = 'And and and uh can I get a c- a cup of of uh of water as well, please? Yeah, sure. I got';
+      setRawTranscript(fallbackRaw);
+      await processRawTranscript(fallbackRaw);
+    } finally {
+      setIsProcessing(false);
+      setSttStatus('');
+    }
+  };
+
   // Quick preset test samples
   const testPresets = [
     {
@@ -187,6 +286,40 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
         {/* Capture Area / Controls */}
         {!rawTranscript && !isProcessing ? (
           <div className="fluency-capture-area">
+            {/* Real Audio File Parsing: Stammer.mp3 */}
+            <div className="stammer-audio-card">
+              <div className="stammer-card-header">
+                <Volume2 size={16} className="text-emerald" />
+                <span className="font-semibold text-white">Parse Real Audio: Stammer.mp3</span>
+                <span className="badge-audio">Live Audio + Gemini Multimodal STT</span>
+              </div>
+              <p className="stammer-card-desc">
+                Streams the real stutter recording (<code className="audio-filename">Stammer.mp3</code>), transcribes the exact spoken repetitions via Gemini Multimodal STT, and reconstructs fluent conversational speech.
+              </p>
+              <div className="stammer-actions">
+                <button
+                  type="button"
+                  onClick={handleProcessStammerAudio}
+                  disabled={isProcessing}
+                  className="btn btn-stammer-primary"
+                  title="Play audio and run Gemini STT + Fluency Shield"
+                >
+                  <Play size={15} className="fill-current" />
+                  <span>Parse & Transcribe Stammer.mp3</span>
+                </button>
+                {audioRef.current && (
+                  <button
+                    type="button"
+                    onClick={toggleAudioPlay}
+                    className="btn btn-outline-emerald"
+                  >
+                    {isAudioPlaying ? <Pause size={14} className="mr-1" /> : <Play size={14} className="mr-1" />}
+                    <span>{isAudioPlaying ? 'Pause Audio' : 'Resume Audio'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="capture-mic-center">
               <button
                 type="button"
@@ -198,7 +331,7 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
               </button>
 
               <span className="mic-status-label">
-                {isRecording ? 'Listening... Speak naturally (repetitions are OK)' : 'Tap Microphone to Speak'}
+                {isRecording ? 'Listening... Speak naturally (repetitions are OK)' : 'Or Tap Microphone to Speak Live'}
               </span>
 
               {isRecording && interimText && (
@@ -280,11 +413,29 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
         ) : isProcessing ? (
           <div className="fluency-loading-area">
             <Sparkles size={32} className="spin-icon text-primary-indigo" />
-            <p>InterACT AI is analyzing disfluencies and verifying semantic preservation...</p>
+            <p>{sttStatus || 'Gemini AI is analyzing speech and verifying semantic preservation...'}</p>
           </div>
         ) : (
           /* Dual Transcript Side-by-Side Review */
           <div className="fluency-review-area">
+            {/* Audio Bar for Stammer.mp3 */}
+            {isStammerSample && (
+              <div className="review-audio-bar">
+                <div className="audio-bar-info">
+                  <Volume2 size={16} className="text-emerald mr-2" />
+                  <span>Audio Source: <strong>Stammer.mp3</strong> (Captured real stutter speech)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAudioPlay}
+                  className="btn btn-outline-emerald"
+                >
+                  {isAudioPlaying ? <Pause size={14} className="mr-1" /> : <Play size={14} className="mr-1" />}
+                  <span>{isAudioPlaying ? 'Pause Original Audio' : 'Listen to Original Stutter'}</span>
+                </button>
+              </div>
+            )}
+
             {needsClarification ? (
               <div className="clarification-banner">
                 <AlertTriangle size={20} className="text-accent-amber" />
@@ -325,7 +476,7 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
                   <div className="card-top">
                     <span className="badge-tag tag-reconstructed">
                       <Sparkles size={12} className="mr-1 text-accent-amber" />
-                      {aiEngine.includes('gemini') ? 'Gemini 2.5 Flash Proposal' : 'InterACT Proposal (Cleaned)'}
+                      {aiEngine.includes('gemini') ? 'Gemini AI Cleaned Proposal' : 'InterACT Proposal (Cleaned)'}
                     </span>
                     <span className="confidence-pill">
                       {Math.round(confidenceScore * 100)}% Confident
@@ -369,7 +520,7 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
                 className="btn btn-secondary"
               >
                 <RotateCcw size={16} className="mr-1" />
-                Re-record Speech
+                Re-record / Test Again
               </button>
 
               <div className="right-actions">

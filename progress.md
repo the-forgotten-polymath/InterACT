@@ -84,3 +84,16 @@
    - Added `⚡ 1-Click Launch Connected Session` button in Split Test Mode (`App.tsx`).
    - Automatically provisions room `session_id`, connects Customer on left and Agent on right with zero manual code entry.
    - Integrated live hardware mic status checker and direct disfluency text tester in `FluencyShieldModal.tsx`.
+
+---
+
+## 🌐 Production Cloud Deployment (November 20, 2026)
+
+- **Backend Live on Render:**
+  - Production URL: `https://interact-backend-25ys.onrender.com`
+  - Health Endpoint: `https://interact-backend-25ys.onrender.com/api/v1/health` (`status: healthy`)
+  - WebSockets Endpoint: `wss://interact-backend-25ys.onrender.com/api/v1/ws/sessions` (tested & verified)
+  - Fluency Shield & Speech endpoints active in production.
+- **Frontend Configured for Vercel:**
+  - `frontend/.env.production` pre-configured to point to `https://interact-backend-25ys.onrender.com/api/v1`.
+  - Zero-configuration Vercel deployment: importing the repo builds and links to production automatically.

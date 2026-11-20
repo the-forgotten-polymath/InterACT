@@ -12,7 +12,8 @@ import {
   Maximize2,
   ShieldCheck,
   Activity,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import {
   GestureService,
@@ -40,7 +41,8 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
   const [activeTab, setActiveTab] = useState<'detector' | 'enroll' | 'library'>('detector');
   const [isMinimized, setIsMinimized] = useState(false);
 
-  // Live detection state
+  // Live detection & hand tracking state
+  const [handDetected, setHandDetected] = useState(false);
   const [detectedGesture, setDetectedGesture] = useState<MatchResult | null>(null);
   const [holdProgress, setHoldProgress] = useState(0); // 0 to 100%
   const [lastTriggeredPhrase, setLastTriggeredPhrase] = useState<string | null>(null);
@@ -62,8 +64,10 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
   const animFrameRef = useRef<number | null>(null);
   const holdStartTimeRef = useRef<number | null>(null);
   const currentMatchRef = useRef<MatchResult | null>(null);
+  const latestLandmarksRef = useRef<Landmark3D[] | null>(null);
+  const enrollmentTimerRef = useRef<any>(null);
 
-  const HOLD_DURATION_MS = 1200; // 1.2 seconds required hold
+  const HOLD_DURATION_MS = 1200; // 1.2 seconds required steady hold
 
   useEffect(() => {
     if (isOpen) {
@@ -76,6 +80,18 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
       stopCamera();
     };
   }, [isOpen]);
+
+  // Safeguard: Ensure video keeps camera stream attached if tab or layout updates
+  useEffect(() => {
+    if (videoRef.current && streamRef.current) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch(console.warn);
+      }
+    }
+  }, [activeTab, isMinimized, isCameraActive]);
 
   const startCamera = async () => {
     setCameraError(null);
@@ -93,7 +109,7 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
+          videoRef.current?.play().catch(console.warn);
           setIsCameraActive(true);
           initAndRunDetection();
         };
@@ -110,14 +126,20 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    if (enrollmentTimerRef.current) {
+      clearInterval(enrollmentTimerRef.current);
+      enrollmentTimerRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     setIsCameraActive(false);
+    setHandDetected(false);
     setDetectedGesture(null);
     setHoldProgress(0);
     holdStartTimeRef.current = null;
+    latestLandmarksRef.current = null;
   };
 
   // Run MediaPipe continuous vision loop
@@ -153,32 +175,28 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
     try {
       results = landmarker.detectForVideo(video, startTimeMs);
     } catch (e) {
-      // Ignore occasional frame dropped errors
+      // Ignore dropped frame
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (results && results.landmarks && results.landmarks.length > 0) {
       const rawLandmarks: Landmark3D[] = results.landmarks[0];
+      latestLandmarksRef.current = rawLandmarks;
+      setHandDetected(true);
 
       // Draw hand skeleton on overlay canvas
       drawSkeleton(ctx, rawLandmarks, canvas.width, canvas.height);
 
-      // Evaluate match against presets and enrolled custom gestures
+      // In detector mode, evaluate match against presets and enrolled custom gestures
       const matched =
         GestureService.matchPresetGesture(rawLandmarks) ||
         GestureService.matchCustomGestures(rawLandmarks);
 
       handleMatchHoldLogic(matched);
-
-      // If user is enrolling, capture live sample vector
-      if (enrollmentCountdown !== null && enrollmentCountdown <= 1) {
-        const norm = GestureService.normalizeLandmarks(rawLandmarks);
-        if (norm.length > 0) {
-          setEnrolledVector(norm);
-        }
-      }
     } else {
+      latestLandmarksRef.current = null;
+      setHandDetected(false);
       handleMatchHoldLogic(null);
     }
 
@@ -208,7 +226,6 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
       const p1 = landmarks[startIdx];
       const p2 = landmarks[endIdx];
       ctx.beginPath();
-      // Mirror horizontally because webcam is mirrored
       ctx.moveTo(w - p1.x * w, p1.y * h);
       ctx.lineTo(w - p2.x * w, p2.y * h);
       ctx.stroke();
@@ -244,46 +261,47 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
       holdStartTimeRef.current = performance.now();
       setDetectedGesture(match);
       setHoldProgress(0);
-      onActivityChange?.('gesturing');
+      onActivityChange?.('processing_gesture');
       return;
     }
 
-    // Same gesture held steadily
+    // Increment hold time
     if (holdStartTimeRef.current) {
       const elapsed = performance.now() - holdStartTimeRef.current;
       const progress = Math.min(100, Math.round((elapsed / HOLD_DURATION_MS) * 100));
       setHoldProgress(progress);
 
       if (elapsed >= HOLD_DURATION_MS) {
-        // Trigger confirmed!
-        triggerGestureConfirmation(match.gesture);
+        // Trigger confirmed macro!
+        triggerConfirmedMacro(match.gesture);
       }
     }
   };
 
-  const triggerGestureConfirmation = (gesture: EnrolledGesture) => {
+  // Trigger macro dispatch
+  const triggerConfirmedMacro = (gesture: EnrolledGesture) => {
+    setIsCoolingDown(true);
+    setHoldProgress(100);
+    setLastTriggeredPhrase(gesture.phrase);
+    playChime();
+
+    // Notify parent
+    onGestureConfirmed(gesture);
+
+    // Reset hold
     holdStartTimeRef.current = null;
     currentMatchRef.current = null;
     setDetectedGesture(null);
-    setHoldProgress(0);
-    setIsCoolingDown(true);
-    setLastTriggeredPhrase(gesture.phrase);
 
-    // Audio chime trigger
-    playConfirmationChime();
-
-    // Send phrase to live session
-    onGestureConfirmed(gesture);
-
-    // Cooldown 2.5s before allowing next gesture trigger
+    // 2.5s cooldown before accepting next gesture
     setTimeout(() => {
       setIsCoolingDown(false);
+      setHoldProgress(0);
       setLastTriggeredPhrase(null);
-      onActivityChange?.('idle');
     }, 2500);
   };
 
-  const playConfirmationChime = () => {
+  const playChime = () => {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
@@ -292,46 +310,113 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
+        osc.type = 'sine';
         osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1); // A5
         gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
         osc.start();
-        osc.stop(ctx.currentTime + 0.25);
+        osc.stop(ctx.currentTime + 0.35);
       }
     } catch {
       // AudioContext unavailable
     }
   };
 
-  // Start enrollment capture countdown
+  const playCaptureChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      }
+    } catch {
+      // AudioContext unavailable
+    }
+  };
+
+  // Instant snap without waiting
+  const handleInstantSnap = () => {
+    if (!customName.trim() || !customPhrase.trim()) {
+      alert('Please fill in both Macro Name and Spoken Phrase first.');
+      return;
+    }
+
+    if (!latestLandmarksRef.current) {
+      alert('No hand visible in camera! Please raise your hand in front of the camera and try again.');
+      return;
+    }
+
+    const norm = GestureService.normalizeLandmarks(latestLandmarksRef.current);
+    if (norm && norm.length > 0) {
+      setEnrolledVector(norm);
+      setEnrollmentCountdown(0);
+      playCaptureChime();
+    } else {
+      alert('Hand landmarks not clear. Please hold your hand steady in view.');
+    }
+  };
+
+  // 3s Countdown enrollment
   const handleStartEnrollment = () => {
     if (!customName.trim() || !customPhrase.trim()) {
-      alert('Please provide both a gesture name and spoken phrase.');
+      alert('Please provide both a gesture name and spoken phrase first.');
+      return;
+    }
+
+    if (!latestLandmarksRef.current) {
+      alert('Please hold your hand up in front of the camera before starting the countdown.');
       return;
     }
 
     setEnrolledVector(null);
     setEnrollmentCountdown(3);
 
-    const timer = setInterval(() => {
-      setEnrollmentCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
-          return 0;
+    let count = 3;
+    if (enrollmentTimerRef.current) clearInterval(enrollmentTimerRef.current);
+
+    enrollmentTimerRef.current = setInterval(() => {
+      count -= 1;
+      if (count > 0) {
+        setEnrollmentCountdown(count);
+      } else {
+        clearInterval(enrollmentTimerRef.current);
+        setEnrollmentCountdown(0);
+        // Snap pose from latest detected landmarks
+        if (latestLandmarksRef.current) {
+          const norm = GestureService.normalizeLandmarks(latestLandmarksRef.current);
+          if (norm && norm.length > 0) {
+            setEnrolledVector(norm);
+            playCaptureChime();
+          } else {
+            alert('Could not capture hand geometry. Please try again.');
+            setEnrollmentCountdown(null);
+          }
+        } else {
+          alert('No hand detected at moment of capture. Please try again.');
+          setEnrollmentCountdown(null);
         }
-        return prev - 1;
-      });
+      }
     }, 1000);
   };
 
   const handleSaveCustomGesture = () => {
     if (!enrolledVector) {
-      alert('No hand pose captured yet. Hold your hand pose steady in front of the camera and click Record.');
+      alert('No hand pose captured yet! Use Instant Snap or the 3s Countdown while holding your hand in view.');
       return;
     }
 
-    const saved = GestureService.saveCustomGesture({
+    GestureService.saveCustomGesture({
       name: customName.trim(),
       phrase: customPhrase.trim(),
       emoji: customEmoji || '✨',
@@ -393,7 +478,7 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
             </div>
             <div>
               <h3>Personalized Gesture Macros</h3>
-              <p>Hands-free visual communication. 100% processed locally on device for privacy.</p>
+              <p>Hands-free visual shortcuts. 100% on-device local computer vision (zero video sent over network).</p>
             </div>
           </div>
 
@@ -445,9 +530,50 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
             </div>
           )}
 
-          {activeTab === 'detector' && (
+          {activeTab === 'library' ? (
+            /* Macro Library Tab */
+            <div className="library-layout">
+              <div className="library-header">
+                <h4>All Active Gesture Shortcuts</h4>
+                <p>Hold any of these gestures in front of the camera for 1.2s to speak the bound phrase.</p>
+              </div>
+
+              <div className="library-grid">
+                {DEFAULT_PRESET_GESTURES.map((g) => (
+                  <div key={g.id} className="library-card preset">
+                    <div className="card-emoji">{g.emoji}</div>
+                    <div className="card-info">
+                      <strong>{g.name}</strong>
+                      <span className="badge-system">Built-in Preset</span>
+                      <p className="card-phrase">"{g.phrase}"</p>
+                    </div>
+                  </div>
+                ))}
+
+                {customList.map((g) => (
+                  <div key={g.id} className="library-card custom">
+                    <div className="card-emoji">{g.emoji}</div>
+                    <div className="card-info">
+                      <strong>{g.name}</strong>
+                      <span className="badge-custom">Personalized Macro</span>
+                      <p className="card-phrase">"{g.phrase}"</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCustom(g.id)}
+                      className="btn-delete-card"
+                      title="Delete Macro"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* Shared Continuous Camera Layout (Detector and Enroll share one persistent video element) */
             <div className="detector-layout">
-              {/* Camera Preview with Overlay Canvas */}
+              {/* Camera Viewport (Persistently mounted across tabs) */}
               <div className="video-viewport">
                 <video
                   ref={videoRef}
@@ -458,8 +584,13 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
                 />
                 <canvas ref={canvasRef} className="camera-canvas" />
 
-                {/* HUD Live Detection Overlay */}
-                {detectedGesture && (
+                {/* Hand Detection Status Pill */}
+                <div className={`hand-status-badge ${handDetected ? 'detected' : 'searching'}`}>
+                  <span>{handDetected ? '🟢 Hand Active (21 points)' : '🟡 Raise Hand to Camera'}</span>
+                </div>
+
+                {/* HUD Live Detection Overlay (Detector Mode) */}
+                {activeTab === 'detector' && detectedGesture && (
                   <div className="live-hud-pill">
                     <div className="hud-pill-info">
                       <span className="hud-emoji">{detectedGesture.gesture.emoji}</span>
@@ -480,180 +611,140 @@ export const GestureHUDModal: React.FC<GestureHUDModalProps> = ({
                 )}
 
                 {/* Confirmed Broadcast Notice */}
-                {lastTriggeredPhrase && (
+                {activeTab === 'detector' && lastTriggeredPhrase && (
                   <div className="confirmed-flash-banner">
                     <Check size={20} className="text-emerald" />
                     <span>Transmitted: "{lastTriggeredPhrase}"</span>
                   </div>
                 )}
-              </div>
 
-              {/* Side Quick Actions */}
-              <div className="detector-sidebar">
-                <div className="sidebar-section-title">
-                  <Sparkles size={14} className="text-accent-amber" />
-                  <span>Available Quick Shortcuts:</span>
-                </div>
-
-                <div className="quick-presets-scroll">
-                  {DEFAULT_PRESET_GESTURES.map((p) => (
-                    <div key={p.id} className="quick-preset-item">
-                      <span className="preset-item-emoji">{p.emoji}</span>
-                      <div className="preset-item-info">
-                        <strong>{p.name}</strong>
-                        <p>"{p.phrase}"</p>
-                      </div>
-                    </div>
-                  ))}
-
-                  {customList.map((c) => (
-                    <div key={c.id} className="quick-preset-item custom">
-                      <span className="preset-item-emoji">{c.emoji}</span>
-                      <div className="preset-item-info">
-                        <strong>{c.name} <span className="custom-tag">Custom</span></strong>
-                        <p>"{c.phrase}"</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'enroll' && (
-            <div className="enroll-layout">
-              <div className="enroll-form">
-                <h4>Record a Personalized Gesture</h4>
-                <p className="enroll-desc">
-                  Hold any natural hand pose comfortable for you. InterACT extracts the 21-point geometric skeleton and binds it to your phrase.
-                </p>
-
-                <div className="form-group">
-                  <label>Macro Name:</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Need Medical Help / Two Fingers Held"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Spoken Phrase to Agent:</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Please expedite, I have a physical medical requirement."
-                    value={customPhrase}
-                    onChange={(e) => setCustomPhrase(e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Icon / Emoji:</label>
-                  <input
-                    type="text"
-                    maxLength={2}
-                    value={customEmoji}
-                    onChange={(e) => setCustomEmoji(e.target.value)}
-                    className="form-input emoji-input"
-                  />
-                </div>
-
-                <div className="enroll-actions">
-                  <button
-                    type="button"
-                    onClick={handleStartEnrollment}
-                    disabled={enrollmentCountdown !== null}
-                    className="btn btn-secondary"
-                  >
-                    <Camera size={16} className="mr-1" />
-                    {enrollmentCountdown !== null
-                      ? enrollmentCountdown === 0
-                        ? '✅ Captured Pose!'
-                        : `Hold Pose... ${enrollmentCountdown}s`
-                      : 'Capture Hand Pose (3s Countdown)'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveCustomGesture}
-                    disabled={!enrolledVector}
-                    className="btn btn-primary"
-                  >
-                    <Check size={16} className="mr-1" />
-                    Save & Activate Macro
-                  </button>
-                </div>
-              </div>
-
-              {/* Live Preview during enrollment */}
-              <div className="enroll-video-preview">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="camera-video mirrored"
-                />
-                <canvas ref={canvasRef} className="camera-canvas" />
-
-                {enrollmentCountdown !== null && enrollmentCountdown > 0 && (
+                {/* Enroll Mode Countdown Overlay */}
+                {activeTab === 'enroll' && enrollmentCountdown !== null && enrollmentCountdown > 0 && (
                   <div className="countdown-overlay">
                     <span className="countdown-number">{enrollmentCountdown}</span>
                     <p>Hold hand pose steady</p>
                   </div>
                 )}
               </div>
-            </div>
-          )}
 
-          {activeTab === 'library' && (
-            <div className="library-layout">
-              <div className="library-section">
-                <h4>System Preset Macros (Built-in)</h4>
-                <div className="library-grid">
-                  {DEFAULT_PRESET_GESTURES.map((g) => (
-                    <div key={g.id} className="library-card">
-                      <div className="card-emoji">{g.emoji}</div>
-                      <div className="card-details">
-                        <strong>{g.name}</strong>
-                        <p>"{g.phrase}"</p>
+              {/* Right Panel: Depends on Active Tab */}
+              {activeTab === 'detector' ? (
+                /* Live Detector Shortcuts Sidebar */
+                <div className="detector-sidebar">
+                  <div className="sidebar-section-title">
+                    <Sparkles size={14} className="text-accent-amber" />
+                    <span>Available Quick Shortcuts:</span>
+                  </div>
+
+                  <div className="quick-presets-scroll">
+                    {DEFAULT_PRESET_GESTURES.map((p) => (
+                      <div key={p.id} className="quick-preset-item">
+                        <span className="preset-item-emoji">{p.emoji}</span>
+                        <div className="preset-item-info">
+                          <strong>{p.name}</strong>
+                          <p>"{p.phrase}"</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    ))}
 
-              <div className="library-section">
-                <h4>Your Custom Enrolled Macros</h4>
-                {customList.length === 0 ? (
-                  <p className="empty-custom-hint">
-                    No custom gestures enrolled yet. Click "Enroll Custom Macro" to teach InterACT your personal hand poses!
-                  </p>
-                ) : (
-                  <div className="library-grid">
                     {customList.map((c) => (
-                      <div key={c.id} className="library-card custom">
-                        <div className="card-emoji">{c.emoji}</div>
-                        <div className="card-details">
-                          <strong>{c.name}</strong>
+                      <div key={c.id} className="quick-preset-item custom">
+                        <span className="preset-item-emoji">{c.emoji}</span>
+                        <div className="preset-item-info">
+                          <strong>{c.name} <span className="custom-tag">Custom</span></strong>
                           <p>"{c.phrase}"</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCustom(c.id)}
-                          className="btn-delete"
-                          title="Delete Custom Macro"
-                        >
-                          <Trash2 size={16} />
-                        </button>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                /* Enroll Custom Macro Form Sidebar */
+                <div className="enroll-sidebar-form">
+                  <div className="sidebar-section-title">
+                    <Plus size={16} className="text-emerald" />
+                    <span className="text-white font-semibold">Record Custom Pose</span>
+                  </div>
+                  <p className="enroll-desc" style={{ margin: '0 0 10px 0' }}>
+                    Hold any custom hand pose in view. InterACT extracts the 21 keypoints and stores it locally.
+                  </p>
+
+                  <div className="form-group">
+                    <label>Macro Name:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Call Driver / Medicine Delay"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Spoken Phrase to Agent:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Please call my delivery partner immediately."
+                      value={customPhrase}
+                      onChange={(e) => setCustomPhrase(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Emoji Badge:</label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={customEmoji}
+                      onChange={(e) => setCustomEmoji(e.target.value)}
+                      className="form-input emoji-input"
+                    />
+                  </div>
+
+                  {enrolledVector && (
+                    <div className="pose-captured-pill">
+                      <Check size={14} className="text-emerald" />
+                      <span>Pose Captured! (63 landmarks registered)</span>
+                    </div>
+                  )}
+
+                  <div className="enroll-actions" style={{ marginTop: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={handleInstantSnap}
+                      className="btn-instant-snap"
+                      title="Capture pose immediately without waiting"
+                    >
+                      <Zap size={15} />
+                      <span>Instant Snap Hand Pose</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleStartEnrollment}
+                      disabled={enrollmentCountdown !== null && enrollmentCountdown > 0}
+                      className="btn btn-secondary"
+                    >
+                      <Camera size={15} className="mr-1" />
+                      {enrollmentCountdown !== null && enrollmentCountdown > 0
+                        ? `Hold Pose... ${enrollmentCountdown}s`
+                        : 'Capture with 3s Timer'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveCustomGesture}
+                      disabled={!enrolledVector}
+                      className="btn btn-primary"
+                      style={{ marginTop: '4px' }}
+                    >
+                      <Check size={16} className="mr-1" />
+                      Save & Activate Macro
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

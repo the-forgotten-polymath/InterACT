@@ -282,8 +282,8 @@ export class GestureService {
       }
     }
 
-    // Threshold of 0.88 for custom vector template match
-    if (bestMatch && maxSimilarity >= 0.88) {
+    // Threshold of 0.84 for accessible custom vector template match
+    if (bestMatch && maxSimilarity >= 0.84) {
       return {
         gesture: bestMatch,
         confidence: Math.round(maxSimilarity * 100) / 100

@@ -31,6 +31,15 @@ app.add_middleware(
 )
 
 # Root-level health check probe
+@app.get("/", tags=["Root"])
+async def root():
+    return {
+        "service": settings.PROJECT_NAME,
+        "status": "online",
+        "api_docs": "/docs",
+        "health": "/health"
+    }
+
 @app.get("/health", tags=["Health"])
 async def root_health():
     return {

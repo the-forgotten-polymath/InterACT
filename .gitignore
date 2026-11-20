@@ -1,0 +1,57 @@
+# Environments & Python
+.venv/
+env/
+venv/
+ENV/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# Node / Frontend Dependencies
+node_modules
+node_modules/
+frontend/node_modules
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Builds & Production Outputs
+dist/
+build/
+.next/
+out/
+
+# Operating System & IDE
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Large Neural Models & Checkpoints (downloaded on runtime)
+backend/models/*
+!backend/models/.gitkeep
+*.onnx
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Generated Audio Caches
+backend/static/audio/*
+!backend/static/audio/.gitkeep

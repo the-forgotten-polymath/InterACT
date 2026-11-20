@@ -1,0 +1,21 @@
+{
+  "name": "interact-platform",
+  "version": "1.0.0",
+  "description": "InterACT — Multimodal Accessibility Communication Platform",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix frontend run build",
+    "dev": "npm --prefix frontend run dev",
+    "start": "npm --prefix frontend run preview"
+  },
+  "keywords": [
+    "accessibility",
+    "webrtc",
+    "tts",
+    "stutter-cleaner",
+    "fluency-shield",
+    "speech-divergence"
+  ],
+  "author": "InterACT Team",
+  "license": "MIT"
+}

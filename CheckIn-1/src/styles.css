@@ -1,0 +1,1393 @@
+/* ==========================================================================
+   CheckIn — Mobile WebRTC Video Calling Theme & App Shell
+   ========================================================================== */
+
+:root {
+  --bg-black: #06080d;
+  --bg-sheet: #0e121d;
+  --bg-card: rgba(22, 29, 44, 0.7);
+  --bg-key: rgba(255, 255, 255, 0.08);
+  --bg-key-hover: rgba(255, 255, 255, 0.16);
+  --bg-key-active: rgba(255, 255, 255, 0.28);
+  
+  --call-green: #22c55e;
+  --call-green-hover: #16a34a;
+  --call-green-glow: rgba(34, 197, 94, 0.4);
+
+  --call-red: #ef4444;
+  --call-red-hover: #dc2626;
+  --call-red-glow: rgba(239, 68, 68, 0.4);
+
+  --primary: #6366f1;
+  --primary-glow: rgba(99, 102, 241, 0.35);
+
+  --text-white: #ffffff;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+input, textarea {
+  user-select: text;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #030407;
+  font-family: var(--font-sans);
+  color: var(--text-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   Mobile Viewport Container
+   On mobile phones (<= 640px): 100% full screen edge-to-edge.
+   On desktop screens: Elegant centered smartphone chassis.
+   ========================================================================== */
+.mobile-app-viewport {
+  width: 100%;
+  height: 100dvh;
+  height: 100vh;
+  max-width: 440px;
+  max-height: 900px;
+  background: var(--bg-black);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: 40px;
+}
+
+@media (max-width: 640px) {
+  .mobile-app-viewport {
+    max-width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* ==========================================================================
+   Mobile Status Bar (Time, Signal, 5G, Battery)
+   ========================================================================== */
+.mobile-status-bar {
+  height: 44px;
+  padding: env(safe-area-inset-top, 8px) 24px 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 40;
+  flex-shrink: 0;
+}
+
+.status-bar-time {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.status-bar-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+}
+.status-signal-bars .bar {
+  width: 3px;
+  background: #fff;
+  border-radius: 1px;
+}
+.status-signal-bars .b1 { height: 4px; }
+.status-signal-bars .b2 { height: 6px; }
+.status-signal-bars .b3 { height: 9px; }
+.status-signal-bars .b4 { height: 11px; }
+
+.status-wifi {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+}
+
+.status-battery {
+  width: 22px;
+  height: 11px;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+  padding: 1px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.status-battery::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: 2.5px;
+  width: 2px;
+  height: 4px;
+  background: #fff;
+  border-radius: 0 1px 1px 0;
+}
+.battery-level {
+  width: 80%;
+  height: 100%;
+  background: #fff;
+  border-radius: 1px;
+}
+
+/* ==========================================================================
+   Mobile Shell & App Header
+   ========================================================================== */
+.mobile-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 15%, #151a28 0%, #06080d 75%);
+}
+
+.mobile-app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 12px 20px;
+  flex-shrink: 0;
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.user-avatar-mini {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-name-display {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+}
+
+.edit-pill {
+  font-size: 0.625rem;
+  color: #818cf8;
+  text-transform: uppercase;
+}
+
+.user-name-inline-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #818cf8;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  outline: none;
+  width: 90px;
+}
+
+.header-icon-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.header-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mobile-body-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0 16px;
+}
+
+/* ==========================================================================
+   Phone Dialer UI
+   ========================================================================== */
+.dialer-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 12px;
+}
+
+/* Room Code Display */
+.dialer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 14px 0;
+}
+
+.dialer-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.dialer-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+}
+
+.dialer-code-text {
+  font-family: var(--font-mono);
+  font-size: 2.125rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #fff;
+  background: transparent;
+  border: none;
+  text-align: center;
+  width: 100%;
+  outline: none;
+  caret-color: var(--call-green);
+}
+
+.dialer-code-text.manual-input-active {
+  border-bottom: 2px solid var(--call-green);
+}
+
+.dialer-code-text::placeholder {
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.dialer-backspace-btn {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: opacity 0.2s;
+}
+.dialer-backspace-btn:active {
+  opacity: 0.5;
+}
+
+.display-quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.quick-action-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+.quick-action-pill:hover, .quick-action-pill.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* Circular Keypad Grid */
+.dialpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 320px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.dialpad-key {
+  aspect-ratio: 1;
+  max-width: 76px;
+  max-height: 76px;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--bg-key);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dialpad-key:hover {
+  background: var(--bg-key-hover);
+}
+
+.dialpad-key:active {
+  transform: scale(0.92);
+  background: var(--bg-key-active);
+}
+
+.key-number {
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.1;
+  font-family: var(--font-sans);
+}
+
+.key-subtext {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+/* Call Action Bar */
+.dialer-call-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 16px;
+}
+
+.side-action-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.side-action-circle.active-state {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.side-action-circle.muted-state {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}
+
+.main-call-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--call-green);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px var(--call-green-glow);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.main-call-btn:hover:not(:disabled) {
+  background: var(--call-green-hover);
+  transform: scale(1.05);
+}
+
+.main-call-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.main-call-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Recents Tab Screen */
+.recents-container {
+  flex: 1;
+  padding: 12px 4px;
+}
+
+.recents-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.recents-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-top: 60px;
+}
+
+.recents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+}
+
+.recent-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: 0.08em;
+  color: #fff;
+}
+
+.recent-time {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.recent-call-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--call-green);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Bottom Navigation Tabs */
+.mobile-bottom-tabs {
+  height: 62px;
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+  background: rgba(10, 14, 22, 0.85);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+}
+
+.tab-btn.active-tab {
+  color: var(--call-green);
+}
+
+/* ==========================================================================
+   Calling / Outgoing Screen
+   ========================================================================== */
+.calling-screen-overlay {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 30px 24px 40px 24px;
+  position: relative;
+  background: radial-gradient(circle at 50% 30%, #151e33 0%, #06080d 80%);
+  overflow: hidden;
+}
+
+.calling-ambient-glow {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  height: 280px;
+  background: rgba(34, 197, 94, 0.15);
+  filter: blur(80px);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.calling-header {
+  display: flex;
+  justify-content: center;
+}
+
+.calling-shield-badge {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.calling-center-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-top: -20px;
+}
+
+.calling-avatar-wrapper {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.calling-sonar-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(34, 197, 94, 0.5);
+  animation: sonarWave 2.4s infinite cubic-bezier(0.2, 0.8, 0.4, 1);
+}
+.calling-sonar-ring.r1 { animation-delay: 0s; }
+.calling-sonar-ring.r2 { animation-delay: 0.8s; }
+.calling-sonar-ring.r3 { animation-delay: 1.6s; }
+
+@keyframes sonarWave {
+  0% { transform: scale(0.9); opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.calling-avatar-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #166534, #22c55e);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+}
+
+.calling-avatar-code {
+  font-family: var(--font-mono);
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.calling-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.calling-status-text {
+  font-size: 0.9375rem;
+  color: #86efac;
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+.calling-meta-box {
+  margin-top: 12px;
+}
+.calling-user-tag {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.calling-bottom-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.calling-hangup-btn {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--call-red);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px var(--call-red-glow);
+  transition: transform 0.15s ease;
+}
+.calling-hangup-btn:active {
+  transform: scale(0.92);
+}
+
+.hangup-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   Active Call Screen (Mobile FaceTime / WhatsApp Style)
+   ========================================================================== */
+.mobile-active-call {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+.mobile-main-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Video Tile Fullscreen Styling */
+.mobile-main-stage .video-tile {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+.mobile-main-stage .video-element {
+  object-fit: cover;
+}
+
+/* Waiting for Peer Screen */
+.mobile-waiting-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #151e33 0%, #06080d 80%);
+  padding: 24px;
+  text-align: center;
+}
+
+.mobile-waiting-avatar-pulse {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.mobile-waiting-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.mobile-waiting-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
+.mobile-share-code-btn {
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* Floating Local PiP Window */
+.mobile-pip-window {
+  position: absolute;
+  width: 108px;
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  z-index: 30;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-pip-window.pip-pos-top-right {
+  top: 60px;
+  right: 14px;
+}
+.mobile-pip-window.pip-pos-top-left {
+  top: 60px;
+  left: 14px;
+}
+.mobile-pip-window.pip-pos-bottom-right {
+  bottom: 110px;
+  right: 14px;
+}
+.mobile-pip-window.pip-pos-bottom-left {
+  bottom: 110px;
+  left: 14px;
+}
+
+.mobile-pip-window .video-tile {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+.pip-flip-btn {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* Top Call App Bar */
+.mobile-call-top-bar {
+  position: absolute;
+  top: env(safe-area-inset-top, 16px);
+  left: 16px;
+  right: 16px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 25;
+}
+
+.call-code-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.call-active-time {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.live-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--call-green);
+  box-shadow: 0 0 10px var(--call-green);
+}
+
+.mobile-call-error {
+  position: absolute;
+  top: 70px;
+  left: 16px;
+  right: 16px;
+  background: rgba(245, 158, 11, 0.95);
+  color: #000;
+  padding: 8px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  z-index: 40;
+}
+
+/* Floating Bottom Control Dock */
+.mobile-bottom-dock {
+  position: absolute;
+  bottom: env(safe-area-inset-bottom, 24px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(14, 18, 28, 0.82);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 8px 16px;
+  border-radius: 9999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  z-index: 30;
+}
+
+.dock-circle-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+.dock-circle-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.dock-circle-btn:active {
+  transform: scale(0.92);
+}
+
+.dock-circle-btn.btn-danger-state {
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  color: #fca5a5;
+}
+
+.dock-circle-btn.btn-active-state {
+  background: var(--primary);
+}
+
+.dock-chat-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--call-red);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 9999px;
+}
+
+.dock-hangup-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--call-red);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 20px var(--call-red-glow);
+  transition: all 0.15s ease;
+}
+.dock-hangup-btn:hover {
+  background: var(--call-red-hover);
+}
+.dock-hangup-btn:active {
+  transform: scale(0.92);
+}
+
+/* ==========================================================================
+   Chat Drawer (Mobile Bottom Sheet Style)
+   ========================================================================== */
+.chat-drawer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: rgba(14, 18, 28, 0.96);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 35;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7);
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.chat-header {
+  height: 52px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chat-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.chat-count-pill {
+  font-size: 0.6875rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 7px;
+  border-radius: 9999px;
+  color: var(--text-dim);
+}
+
+.chat-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-bubble-row {
+  display: flex;
+  width: 100%;
+}
+.chat-bubble-row.bubble-local {
+  justify-content: flex-end;
+}
+.chat-bubble-row.bubble-remote {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 0.8125rem;
+  word-break: break-word;
+}
+
+.bubble-local .chat-bubble {
+  background: var(--primary);
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+
+.bubble-remote .chat-bubble {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-bottom-left-radius: 2px;
+}
+
+.chat-bubble-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.625rem;
+  margin-bottom: 3px;
+  opacity: 0.75;
+}
+
+.chat-input-bar {
+  padding: 10px 14px env(safe-area-inset-bottom, 10px) 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-textarea {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  resize: none;
+  outline: none;
+}
+
+.chat-send-btn {
+  width: 36px;
+  height: 36px;
+  background: var(--call-green);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.chat-send-btn:disabled {
+  opacity: 0.4;
+}
+
+/* ==========================================================================
+   Modals & Settings
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.modal-card {
+  background: var(--bg-sheet);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.settings-notice {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: #c7d2fe;
+}
+
+.external-link {
+  color: #818cf8;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-white);
+  display: flex;
+  align-items: center;
+}
+
+.field-hint {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+.form-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.8125rem;
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--primary);
+}
+
+.divider-label {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 4px 0;
+}
+.divider-label::before, .divider-label::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.divider-label span {
+  padding: 0 8px;
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.icon-btn-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Toast */
+.global-toast-error {
+  position: absolute;
+  top: 50px;
+  left: 20px;
+  right: 20px;
+  z-index: 90;
+  background: rgba(239, 68, 68, 0.95);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.toast-dismiss {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+/* Video Tile Elements */
+.video-tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.video-element.mirrored {
+  transform: scaleX(-1);
+}
+
+.avatar-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-circle {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3730a3, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.avatar-initials {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.avatar-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.camera-off-tag {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+.tile-overlay-bottom {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.participant-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+.participant-name-text {
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.hidden { display: none !important; }

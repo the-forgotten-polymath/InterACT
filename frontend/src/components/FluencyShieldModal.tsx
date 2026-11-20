@@ -45,6 +45,7 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [needsClarification, setNeedsClarification] = useState(false);
   const [clarificationPrompt, setClarificationPrompt] = useState<string | null>(null);
+  const [aiEngine, setAiEngine] = useState<string>('gemini-2.5-flash');
   const [manualInput, setManualInput] = useState('');
   const [micHardwareOk, setMicHardwareOk] = useState<boolean | null>(null);
 
@@ -136,6 +137,7 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
       setConfidenceScore(res.confidence_score);
       setNeedsClarification(res.needs_clarification);
       setClarificationPrompt(res.clarification_prompt || null);
+      if (res.engine) setAiEngine(res.engine);
     } catch (err) {
       console.error('Reconstruction error:', err);
       // Fallback
@@ -322,8 +324,8 @@ export const FluencyShieldModal: React.FC<FluencyShieldModalProps> = ({
                 <div className="transcript-card reconstructed-card">
                   <div className="card-top">
                     <span className="badge-tag tag-reconstructed">
-                      <Sparkles size={12} className="mr-1" />
-                      InterACT Proposal (Cleaned)
+                      <Sparkles size={12} className="mr-1 text-accent-amber" />
+                      {aiEngine.includes('gemini') ? 'Gemini 2.5 Flash Proposal' : 'InterACT Proposal (Cleaned)'}
                     </span>
                     <span className="confidence-pill">
                       {Math.round(confidenceScore * 100)}% Confident

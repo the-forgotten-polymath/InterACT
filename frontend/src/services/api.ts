@@ -116,6 +116,7 @@ export class InterACTApi {
     needs_clarification: boolean;
     clarification_prompt?: string;
     processing_time_ms: number;
+    engine?: string;
   }> {
     const res = await fetch(`${getApiBase()}/fluency/reconstruct`, {
       method: 'POST',

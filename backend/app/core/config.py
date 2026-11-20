@@ -1,6 +1,9 @@
 import os
 from typing import List
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def parse_origins(raw: str) -> List[str]:
     if not raw:

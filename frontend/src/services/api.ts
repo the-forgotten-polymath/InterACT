@@ -7,18 +7,33 @@ import {
   EndSessionResponse
 } from '../types/session';
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || '/api/v1';
+const PROD_API_BASE = 'https://interact-backend-25ys.onrender.com/api/v1';
+
+export function getApiBase(): string {
+  const envApi = import.meta.env.VITE_API_URL;
+  if (envApi) return envApi;
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
+    if (!isLocal) {
+      return PROD_API_BASE;
+    }
+  }
+
+  return '/api/v1';
+}
 
 export function getWebSocketUrl(sessionId: string, participantId: string): string {
-  const envWs = (import.meta as any).env?.VITE_WS_URL;
+  const envWs = import.meta.env.VITE_WS_URL;
   if (envWs) {
     const base = envWs.endsWith('/') ? envWs.slice(0, -1) : envWs;
     return `${base}/sessions/${sessionId}?participant_id=${participantId}`;
   }
 
-  const envApi = (import.meta as any).env?.VITE_API_URL;
-  if (envApi && envApi.startsWith('http')) {
-    const wsBase = envApi.replace(/^http/, 'ws');
+  const apiBase = getApiBase();
+  if (apiBase.startsWith('http')) {
+    const wsBase = apiBase.replace(/^http/, 'ws');
     return `${wsBase}/ws/sessions/${sessionId}?participant_id=${participantId}`;
   }
 
@@ -28,13 +43,13 @@ export function getWebSocketUrl(sessionId: string, participantId: string): strin
 
 export class InterACTApi {
   static async checkHealth(): Promise<{ status: string; service: string }> {
-    const res = await fetch(`${API_BASE}/health`);
+    const res = await fetch(`${getApiBase()}/health`);
     if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
     return res.json();
   }
 
   static async createSession(req: CreateSessionRequest = {}): Promise<CreateSessionResponse> {
-    const res = await fetch(`${API_BASE}/sessions`, {
+    const res = await fetch(`${getApiBase()}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req)
@@ -47,7 +62,7 @@ export class InterACTApi {
   }
 
   static async getSession(sessionId: string): Promise<Session> {
-    const res = await fetch(`${API_BASE}/sessions/${sessionId}`);
+    const res = await fetch(`${getApiBase()}/sessions/${sessionId}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || `Session not found (${res.status})`);
@@ -59,7 +74,7 @@ export class InterACTApi {
     sessionId: string,
     req: JoinSessionRequest
   ): Promise<JoinSessionResponse> {
-    const res = await fetch(`${API_BASE}/sessions/${sessionId}/join`, {
+    const res = await fetch(`${getApiBase()}/sessions/${sessionId}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req)
@@ -76,7 +91,7 @@ export class InterACTApi {
     endedBy?: string,
     reason?: string
   ): Promise<EndSessionResponse> {
-    const res = await fetch(`${API_BASE}/sessions/${sessionId}/end`, {
+    const res = await fetch(`${getApiBase()}/sessions/${sessionId}/end`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ended_by: endedBy, reason })
@@ -102,7 +117,7 @@ export class InterACTApi {
     clarification_prompt?: string;
     processing_time_ms: number;
   }> {
-    const res = await fetch(`${API_BASE}/fluency/reconstruct`, {
+    const res = await fetch(`${getApiBase()}/fluency/reconstruct`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req)

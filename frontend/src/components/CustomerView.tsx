@@ -21,7 +21,8 @@ import {
   Activity,
   ShieldCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Hand
 } from 'lucide-react';
 import { InterACTApi, getWebSocketUrl } from '../services/api';
 import { InterACTWebSocket } from '../services/websocket';
@@ -31,6 +32,8 @@ import { generateUUID } from '../utils/uuid';
 import { InterACTEvent, EventType, MessagePayload } from '../types/events';
 import { Session, BusinessContext } from '../types/session';
 import { FluencyShieldModal } from './FluencyShieldModal';
+import { GestureHUDModal } from './GestureHUDModal';
+import { EnrolledGesture } from '../services/gesture';
 
 interface MessageItem {
   id: string;
@@ -44,6 +47,9 @@ interface MessageItem {
   rawTranscript?: string;
   disfluenciesRemoved?: string[];
   showRawDetails?: boolean;
+  isGesture?: boolean;
+  gestureName?: string;
+  gestureEmoji?: string;
 }
 
 interface CustomerViewProps {
@@ -75,6 +81,9 @@ export const CustomerView: React.FC<CustomerViewProps> = ({ autoJoinSessionId, o
 
   // Phase 3 Fluency Shield Modal State
   const [isFluencyModalOpen, setIsFluencyModalOpen] = useState<boolean>(false);
+
+  // Phase 4 Gesture Macro HUD State
+  const [isGestureModalOpen, setIsGestureModalOpen] = useState<boolean>(false);
 
   // Real-Time WebRTC Voice Calling State
   const [callState, setCallState] = useState<CallState>('idle');
@@ -426,6 +435,65 @@ export const CustomerView: React.FC<CustomerViewProps> = ({ autoJoinSessionId, o
     }, 200);
   };
 
+  // Phase 4: Handle Triggered Gesture Macro Shortcut
+  const handleGestureConfirmed = (gesture: EnrolledGesture) => {
+    if (!gesture || !gesture.phrase) return;
+
+    if (!wsRef.current?.isConnected()) {
+      alert('Connecting to live session... please wait a moment.');
+      return;
+    }
+
+    const messageId = `msg_gesture_${generateUUID().substring(0, 8)}`;
+
+    const newMsg: MessageItem = {
+      id: messageId,
+      senderId: participantId,
+      senderRole: 'customer',
+      text: `${gesture.emoji} [${gesture.name}]: "${gesture.phrase}"`,
+      timestamp: Date.now(),
+      status: 'sending',
+      spokenToAgent: true,
+      isGesture: true,
+      gestureName: gesture.name,
+      gestureEmoji: gesture.emoji
+    };
+
+    setMessages((prev) => [...prev, newMsg]);
+
+    // Send via WebSocket with gesture macro metadata
+    wsRef.current.sendEvent(EventType.GESTURE_CONFIRMED, {
+      message_id: messageId,
+      gesture_id: gesture.id,
+      gesture_name: gesture.name,
+      emoji: gesture.emoji,
+      phrase: gesture.phrase
+    });
+
+    // Also send standard message so it delivers seamlessly
+    wsRef.current.sendEvent(EventType.MESSAGE_CREATED, {
+      message_id: messageId,
+      text: `${gesture.emoji} [${gesture.name}]: "${gesture.phrase}"`,
+      message_type: 'gesture',
+      sender_role: 'customer',
+      metadata: {
+        spoken_to_agent: true,
+        speech_language: speechLanguage,
+        voice: selectedVoice,
+        gesture_name: gesture.name,
+        emoji: gesture.emoji
+      }
+    });
+
+    wsRef.current.sendActivity('idle');
+
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, status: 'delivered' } : m))
+      );
+    }, 200);
+  };
+
   // Toggle raw details accordion for a message
   const toggleRawDetails = (msgId: string) => {
     setMessages((prev) =>
@@ -753,7 +821,12 @@ export const CustomerView: React.FC<CustomerViewProps> = ({ autoJoinSessionId, o
                     <p className="message-text">{msg.text}</p>
 
                     <div className="message-footer">
-                      {msg.fluencyShield ? (
+                      {msg.isGesture ? (
+                        <div className="speech-badge gesture-badge">
+                          <Hand size={12} className="text-emerald" />
+                          <span>{msg.gestureEmoji || '✋'} Gesture Macro</span>
+                        </div>
+                      ) : msg.fluencyShield ? (
                         <div className="speech-badge fluency-badge">
                           <ShieldCheck size={12} className="text-emerald" />
                           <span>Fluency Shield Approved</span>
@@ -849,6 +922,17 @@ export const CustomerView: React.FC<CustomerViewProps> = ({ autoJoinSessionId, o
                   <span>Fluency Shield</span>
                 </button>
 
+                {/* Phase 4 Gesture Macro HUD Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsGestureModalOpen(true)}
+                  className="btn btn-gesture"
+                  title="Hands-free Gesture Shortcuts (Hold hand to camera to speak)"
+                >
+                  <Hand size={18} className="text-emerald" />
+                  <span>Gestures</span>
+                </button>
+
                 <button
                   onClick={() => handleSendMessage()}
                   disabled={!inputText.trim() || connState !== 'connected'}
@@ -880,6 +964,23 @@ export const CustomerView: React.FC<CustomerViewProps> = ({ autoJoinSessionId, o
         }}
         onApprove={handleApproveFluencySpeech}
         speechLanguage={speechLanguage}
+      />
+
+      {/* Phase 4: Personalized Gesture Macros HUD Modal */}
+      <GestureHUDModal
+        isOpen={isGestureModalOpen}
+        onClose={() => {
+          setIsGestureModalOpen(false);
+          if (wsRef.current?.isConnected()) {
+            wsRef.current.sendActivity('idle');
+          }
+        }}
+        onGestureConfirmed={handleGestureConfirmed}
+        onActivityChange={(activity) => {
+          if (wsRef.current?.isConnected()) {
+            wsRef.current.sendActivity(activity);
+          }
+        }}
       />
     </div>
   );

@@ -15,8 +15,8 @@
 | **Phase 1** | **Core Communication Infrastructure** | Session lifecycle, 1-to-1 Customer + Agent WebSocket routing, Reconnection backoff, Delivery guarantees | 🟢 **COMPLETED** | Dual web interfaces (Customer & Agent), message history, deduplication, live dev servers |
 | **Phase 2** | **Type-to-Voice Communication** | Text composer → TTS audio delivery to Agent, Auto-Play TTS, Agent voice capture & STT transcription | 🟢 **COMPLETED** | Speech synthesis & transcription API, Web Speech fallback, Auto-Play Customer Voice, Mic STT input |
 | **Phase 3** | **Fluency Shield (Speech Assistance)** | Disfluency detection, semantic preservation, customer review & approval workflow | 🟢 **COMPLETED** | Side-by-side Dual Transcript Review UI, Customer Approval Gate, Disfluency Cleanser, Audit Trail |
-| **Phase 4** | **Personalized Gesture Macros** | Hands-free visual shortcuts, 21-point MediaPipe landmarks, local CV processing | ⚪ **Next Up** | Multi-sample enrollment, real-time matching, privacy verification |
-| **Phase 5** | **Smart Voice Chips (Contextual Engine)** | Live business context ingestion, latest intent analysis, grounded suggestions | ⚪ Queued | Fact-grounding validator, 4-chip generation, 1-tap select-and-speak |
+| **Phase 4** | **Personalized Gesture Macros** | Hands-free visual shortcuts, 21-point MediaPipe landmarks, local CV processing | 🟢 **COMPLETED** | Multi-sample enrollment, real-time matching, privacy verification |
+| **Phase 5** | **Smart Voice Chips (Contextual Engine)** | Live business context ingestion, latest intent analysis, grounded suggestions | ⚪ **Next Up** | Fact-grounding validator, 4-chip generation, 1-tap select-and-speak |
 | **Phase 6** | **Visual Cards & Anti-Hangup Shield** | Structured visual cards (refunds, appointments) + live customer activity states | ⚪ Queued | Activity state broadcaster (`typing`, `reviewing`), accessible cards |
 | **Phase 7** | **Zomato-Inspired Support Demo** | End-to-end support journey, integrated multimodal features, live SDK X-Ray panel | ⚪ Queued | Demo food-delivery app, agent support console, real measured metrics |
 | **Phase 8** | **Reusable TypeScript SDK** | Standalone `@interact/accessibility-sdk` npm package, separate host app validation | ⚪ Queued | SDK build, developer documentation, sample host app integration |
@@ -57,7 +57,41 @@
 
 ---
 
-## 🎯 Next Step: Phase 4 (Personalized Gesture Macros)
+## ✅ Phase 4 Completion Summary (Personalized Gesture Macros)
+
+### Objectives Accomplished
+1. **Client-Side Computer Vision Engine (`gesture.ts`):**
+   - **Privacy-Preserving Edge Processing:** Uses Google MediaPipe (`@mediapipe/tasks-vision` WASM/WebGL). Raw video frames NEVER leave the client browser; only 21 normalized 3D landmarks are analyzed locally.
+   - **Translation & Scale Invariance:** Hand landmarks are zero-centered relative to wrist (landmark 0) and scaled by wrist-to-middle-MCP distance. Works reliably across varying hand sizes, camera distances, and angles.
+   - **Cosine Similarity Matching:** Cosine vector distance compares user hand pose against enrolled gesture templates with threshold 0.88.
+   - **6 Out-of-the-Box Core Presets:**
+     - ✋ Open Palm: *"Please wait a moment."*
+     - 👍 Thumbs Up: *"Yes, I confirm."*
+     - 👎 Thumbs Down: *"No, that is incorrect."*
+     - ☝️ Pointing Up: *"I need your assistance."*
+     - ✊ Closed Fist: *"Please cancel this."*
+     - ✌️ Peace / V-Sign: *"Thank you so much!"*
+   - **Custom Gesture Enrollment Studio:** Users can record any custom hand pose with a 3-second capture countdown, label it, and associate a custom voice phrase, saved persistently in local storage.
+
+2. **Real-Time Gesture HUD & Visual Feedback (`GestureHUDModal.tsx`):**
+   - **Skeleton Landmark Canvas:** Draws real-time mirrored hand joints and connection lines over the video feed.
+   - **1.2s Steady Hold Timer:** Prevents accidental false triggers. Hold progress is visualized by a dynamic circular and horizontal progress indicator.
+   - **Audio Chime:** A harmonic audio chime confirms macro triggering before dispatching.
+   - **Floating Picture-In-Picture (PiP) Mode:** Modal can be collapsed into a floating widget in the corner of the screen so the user can see incoming agent responses while triggering gestures.
+
+3. **Agent Reception & Auto-Voice Delivery:**
+   - **Anti-Hangup Gesturing State (`activity: 'processing_gesture'`):** Displays a live badge to the agent while the customer is holding a gesture.
+   - **`gesture.confirmed` Event Dispatch:** Dispatches typed gesture event containing `gesture_name`, `emoji`, and `phrase`.
+   - **Agent Chat Badge:** Tagged with `✋ Gesture Macro: [Name]` and automatically read aloud via Indian English/Hindi TTS.
+
+4. **Production Vercel & Render Integration:**
+   - **Resilient URL Resolution:** `getApiBase()` dynamically detects browser host, falling back to `https://interact-backend-25ys.onrender.com` when running on Vercel.
+   - **Vercel Edge Rewrites:** Added `/api/:path*` proxy rules in `vercel.json` routing directly to Render backend, eliminating CORS preflight overhead and "Load failed" Safari issues.
+   - **Unit Tests:** 14/14 automated tests passed in `test_phase4_gesture.py` and suite.
+
+---
+
+## 🎯 Next Step: Phase 5 (Smart Voice Chips - Contextual Engine)
 - **Objective:** Hands-free visual shortcut triggers for customers with limited vocalization or motor control.
 - **Components to build:**
   1. MediaPipe Hands 21-point 3D landmark tracking.

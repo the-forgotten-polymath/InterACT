@@ -21,7 +21,8 @@ import {
   Activity,
   Sparkles,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Hand
 } from 'lucide-react';
 import { InterACTApi, getWebSocketUrl } from '../services/api';
 import { InterACTWebSocket } from '../services/websocket';
@@ -43,6 +44,9 @@ interface MessageItem {
   rawTranscript?: string;
   disfluenciesRemoved?: string[];
   showRawDetails?: boolean;
+  isGesture?: boolean;
+  gestureName?: string;
+  gestureEmoji?: string;
 }
 
 interface AgentDashboardProps {
@@ -263,6 +267,41 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({ autoJoinSessionI
         // Automatically synthesize and speak customer approved speech to agent
         if (autoPlayCustomerVoice && approvedText) {
           playCustomerSpeech(msgId, approvedText, speechLang);
+        }
+        break;
+      }
+
+      // Phase 4: Customer Gesture Macro Confirmed Event
+      case EventType.GESTURE_CONFIRMED: {
+        const payload = evt.payload || {};
+        const phrase = payload.phrase || '';
+        const gestureName = payload.gesture_name || 'Gesture';
+        const emoji = payload.emoji || '✋';
+        const msgId = payload.message_id || evt.event_id;
+
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msgId)) return prev;
+          return [
+            ...prev,
+            {
+              id: msgId,
+              senderId: evt.sender_id || 'customer',
+              senderRole: 'customer',
+              text: `${emoji} [${gestureName}]: "${phrase}"`,
+              timestamp: evt.timestamp,
+              spokenToAgent: true,
+              speechLanguage: 'en-IN',
+              isGesture: true,
+              gestureName,
+              gestureEmoji: emoji
+            }
+          ];
+        });
+        setCustomerActivity(null);
+
+        // Auto-play gesture speech aloud to agent
+        if (autoPlayCustomerVoice && phrase) {
+          playCustomerSpeech(msgId, phrase, 'en-IN');
         }
         break;
       }
@@ -651,7 +690,9 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({ autoJoinSessionI
                     <div className={`agent-msg-bubble ${msg.senderRole}`}>
                       <div className="msg-header">
                         <span className="author">
-                          {msg.fluencyShield
+                          {msg.isGesture
+                            ? `Customer (${msg.gestureEmoji || '✋'} Gesture Macro: ${msg.gestureName})`
+                            : msg.fluencyShield
                             ? 'Customer (Fluency Shield Approved)'
                             : msg.senderRole === 'customer'
                             ? 'Customer (Type-to-Voice)'

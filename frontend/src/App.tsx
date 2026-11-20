@@ -25,10 +25,16 @@ export const App: React.FC = () => {
           type: 'order',
           id: 'ZMT-4092',
           data: {
+            restaurant: 'Punjab Grill Express',
+            items: 'Paneer Tikka Butter Masala (x1), Garlic Naan (x2)',
+            total: '₹420.00',
+            eta: '12 mins ago (DELAYED)',
+            driver: 'Rajesh K. (+91 98765 43210)',
+            status: 'In Transit - Running Late',
             app_source: 'zomato',
             customer_name: 'Rahul Sharma',
-            delivery_partner: 'Amit K. (+91 98765 43210)',
-            items_summary: 'Paneer Butter Masala x1, Garlic Naan x2 (Total ₹320)',
+            delivery_partner: 'Rajesh K. (+91 98765 43210)',
+            items_summary: 'Paneer Tikka Butter Masala (x1), Garlic Naan (x2)',
             delivery_address: 'Flat 402, Sunshine Heights, Koramangala'
           }
         }
